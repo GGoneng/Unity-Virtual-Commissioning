@@ -8,6 +8,7 @@
 // - 마우스 활용 카메라 조작 기능
 // -----------------------------------------------------------------------------------
 
+using NUnit.Framework.Constraints;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -19,13 +20,15 @@ public class FreeCamera : MonoBehaviour
     public float Sensitivity = 0.15f;
     // 마우스 감도 (마우스 1픽셀당 판 이동)
     public float panSpeed = 0.001f;
+    // 줌 속도
+    public float zoomSpeed = 0.01f;
 
     // 좌우 각도, 위 아래 각도
     private float yaw;
     private float pitch;
     
     // 마우스 클릭 Mode 구분
-    enum CameraMode { None, Rotate, Move, Zoom }
+    enum CameraMode { None, Rotate, Move }
     private CameraMode mode = CameraMode.None;
 
     void Awake()
@@ -45,23 +48,28 @@ public class FreeCamera : MonoBehaviour
         // 버튼 상태 읽기
         bool left = Mouse.current.leftButton.isPressed;
         bool right = Mouse.current.rightButton.isPressed;
-
+        
         // 줌 상태 읽기
-        bool zoom = Mouse.current.scroll.IsActuated();
-        Debug.Log(Mouse.current.scroll.IsActuated());
+        bool scroll = Mouse.current.scroll.IsActuated();
+
+        // 모드 설정
+        if (!left && !right)
+            mode = CameraMode.None;
+        else if (mode == CameraMode.None && !left && right)
+            mode = CameraMode.Rotate;
+        else if (mode == CameraMode.None && left && right)
+            mode = CameraMode.Move;
 
         // 마우스 오른쪽 버튼을 누르고 있을 때만 시점 돌리기
-        if (!Mouse.current.leftButton.isPressed && Mouse.current.rightButton.isPressed)
-        {
+        if (mode == CameraMode.Rotate)
             cameraRotate();
-        }
-
-        if (Mouse.current.leftButton.isPressed && Mouse.current.rightButton.isPressed)
-        {
+        // 마우스 양쪽 버튼을 누르고 있으면 화면 이동
+        else if (mode == CameraMode.Move)
             cameraMove();
-        }
 
-
+        // 줌은 모드 상관없이 따로
+        if (scroll) 
+            cameraZoom();
     }
 
     void cameraRotate()
@@ -88,5 +96,18 @@ public class FreeCamera : MonoBehaviour
 
         // 카메라 position에 적용
         transform.position -= move;
+    }
+
+    void cameraZoom()
+    {
+        // 줌 이동량 읽기
+        Vector2 scrollDelta = Mouse.current.scroll.ReadValue();
+
+        // 화면 기준 앞쪽 방향으로 이동량 만들기
+        Vector3 move = transform.forward * scrollDelta.y * zoomSpeed;
+
+        // 카메라 position에 적용
+        transform.position += move;
+
     }
 }
